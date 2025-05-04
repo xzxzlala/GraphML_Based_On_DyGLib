@@ -86,6 +86,8 @@ if __name__ == "__main__":
     dygformer.eval()
 
     #TODO: part1
+
+    # part2 done
     u = 100
     neighbors = [123, 456, 789]
     timestamp = 1000.0
@@ -100,3 +102,4 @@ if __name__ == "__main__":
     print(hu_avg.detach().cpu().numpy())
 
     #TODO: part3
+    
