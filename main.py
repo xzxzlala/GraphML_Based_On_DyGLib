@@ -6,6 +6,18 @@ from models.DyGFormer import DyGFormer
 from utils.utils import get_neighbor_sampler
 from utils.DataLoader import get_node_classification_data
 from utils.EarlyStopping import EarlyStopping
+from utils.DataLoader import get_node_classification_data
+
+
+dataset_name = "mooc"
+
+node_raw_features, edge_raw_features, full_data, _, _, _ = get_node_classification_data(
+    dataset_name=dataset_name, val_ratio=0.15, test_ratio=0.15
+)
+
+print(full_data.src_node_ids[:5])
+print(full_data.dst_node_ids[:5])
+print(full_data.node_interact_times[:5])
 
 class MLPClassifierForMooc(torch.nn.Module):
     def __init__(self, input_dim: int, dropout: float = 0.1):
@@ -93,3 +105,17 @@ if __name__ == "__main__":
 
     print("\nhu_avg")
     print(hu_avg.detach().cpu().numpy())
+
+    # TEST: is_connected_at_time
+    print("\n[TEST] is_connected_at_time")
+    print("u=1, v=7049, t=50 =>", neighbor_sampler.is_connected_at_time(1, 7049, 50))
+    print("u=1, v=2, t=7051 =>", neighbor_sampler.is_connected_at_time(1, 2, 7051))
+
+    # TEST: find_neighbors_with_sigmoid_score
+    print("\n[TEST] find_neighbors_with_sigmoid_score")
+    u_test = 1
+    K = 5
+    t_test = 7050
+    topk_neighbors = neighbor_sampler.find_neighbors_with_sigmoid_score(u=u_test, K=K, t=t_test)
+    print(f"Top-{K} neighbors of u={u_test} at t={t_test}:", topk_neighbors)
+
