@@ -33,19 +33,24 @@ class MLPClassifierForMooc(torch.nn.Module):
         return x
 
 
-# 计算所有 hu_i 及其平均值的函数
-def get_all_hu_and_avg(model, u: int, neighbors: list, timestamp: float):
+def get_all_hu_and_avg(model, u: int, neighbors: list, timestamp: float, lambda_decay: float = 1.0):
+    """
+    对 u 和每个邻居 vi，计算 DyGFormer 表示 hu_i，并用 softmax(位置权重) 进行加权平均。
+    :param lambda_decay: float, 控制衰减速度，越大越偏向前面的邻居
+    """
     hu_list = []
+
     for v in neighbors:
         src_node_ids = np.array([u])
         dst_node_ids = np.array([v])
         node_interact_times = np.array([timestamp])
         hu, _ = model.compute_src_dst_node_temporal_embeddings(src_node_ids, dst_node_ids, node_interact_times)
-        hu_list.append(hu.squeeze(0))  # 去掉 batch dim
-    hu_tensor = torch.stack(hu_list, dim=0)
-    hu_avg = hu_tensor.mean(dim=0)
+        hu_list.append(hu.squeeze(0))
+    hu_tensor = torch.stack(hu_list, dim=0)  # [k, d]
+    positions = torch.arange(len(neighbors)).float()
+    weights = torch.softmax(-lambda_decay * positions, dim=0)  # shape: [k]
+    hu_avg = torch.sum(weights.unsqueeze(1) * hu_tensor, dim=0)  # shape: [d]
     return hu_list, hu_avg
-
 
 if __name__ == "__main__":
     # 基础参数
@@ -93,6 +98,8 @@ if __name__ == "__main__":
     dygformer.eval()
 
     #TODO: part1
+
+    # part2 done
     u = 100
     neighbors = [123, 456, 789]
     timestamp = 1000.0
