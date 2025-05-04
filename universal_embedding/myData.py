@@ -15,7 +15,7 @@ class GraphDataset(Dataset):
         self.model = model
 
     def get_neighbors(self, node, G, t=1000, k=5):
-        return [10, 11]
+        return [10, 11, 12]
 
     def get_embedding(self, u: int, timestamp: float, lambda_decay: float = 1.0, neighbors: list = None):
         hu_list = []
