@@ -70,7 +70,7 @@ def create_optimizer(model: nn.Module, optimizer_name: str, learning_rate: float
 
 class NeighborSampler:
 
-    def __init__(self, adj_list: list, data, sample_neighbor_strategy: str = 'uniform', time_scaling_factor: float = 0.0, seed: int = None):
+    def __init__(self, adj_list: list, sample_neighbor_strategy: str = 'uniform', time_scaling_factor: float = 0.0, seed: int = None):
         """
         Neighbor sampler.
         :param adj_list: list, list of list, where each element is a list of triple tuple (node_id, edge_id, timestamp)
@@ -81,7 +81,6 @@ class NeighborSampler:
         """
         self.sample_neighbor_strategy = sample_neighbor_strategy
         self.seed = seed
-        self.data = data
 
         # list of each node's neighbor ids, edge ids and interaction times, which are sorted by interaction times
         self.nodes_neighbor_ids = []
@@ -280,39 +279,6 @@ class NeighborSampler:
         """
         self.random_state = np.random.RandomState(self.seed)
 
-    def is_connected_at_time(self, u: int, v: int, t: float) -> bool:
-        mask = (
-            (self.data.src_node_ids == u) &
-            (self.data.dst_node_ids == v) &
-            (self.data.node_interact_times < t)
-        )
-        return mask.any()
-
-    
-    def find_neighbors_with_sigmoid_score(self, u: int, K: int, t: float):
-        """
-        Find top-K neighbors of node u using time-weighted sigmoid scoring of exact-time interactions.
-        :param u: int, target node id
-        :param K: int, number of neighbors to select
-        :param t: float, reference time (current time)
-        :return: List[int], top-K neighbor node ids
-        """
-        score_dict = {}
-
-        for src, dst, ts in zip(self.data.src_node_ids, self.data.dst_node_ids, self.data.node_interact_times):
-            if ts >= t:
-                continue
-
-            if src == u:
-                v = dst
-                w = 1 / (1 + np.exp(-(t - ts)))
-                score_dict[v] = score_dict.get(v, 0.0) + w
-
-        sorted_neighbors = sorted(score_dict.items(), key=lambda x: x[1], reverse=True)
-        topk_neighbors = [v for v, _ in sorted_neighbors[:K]]
-        return topk_neighbors
-
-
 
 def get_neighbor_sampler(data: Data, sample_neighbor_strategy: str = 'uniform', time_scaling_factor: float = 0.0, seed: int = None):
     """
@@ -333,7 +299,7 @@ def get_neighbor_sampler(data: Data, sample_neighbor_strategy: str = 'uniform', 
         adj_list[src_node_id].append((dst_node_id, edge_id, node_interact_time))
         adj_list[dst_node_id].append((src_node_id, edge_id, node_interact_time))
 
-    return NeighborSampler(adj_list=adj_list, sample_neighbor_strategy=sample_neighbor_strategy, time_scaling_factor=time_scaling_factor, seed=seed, data = data)
+    return NeighborSampler(adj_list=adj_list, sample_neighbor_strategy=sample_neighbor_strategy, time_scaling_factor=time_scaling_factor, seed=seed)
 
 
 class NegativeEdgeSampler(object):

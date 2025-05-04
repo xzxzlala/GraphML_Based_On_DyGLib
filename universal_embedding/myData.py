@@ -13,9 +13,31 @@ class GraphDataset(Dataset):
         """
         self.link_table = link_table
         self.model = model
+    
+    def get_neighbors(self, u: int, G: DataFrame, t: float, k: int) -> list:
+        """
+        Find top-k neighbors of node u using time-weighted sigmoid scoring.
+        :param u: int, source node ID
+        :param G: DataFrame, full interaction dataset with columns ['u', 'v', 't', 'linked']
+        :param t: float, current reference time
+        :param k: int, number of neighbors to return
+        :return: List[int], top-k neighbor node ids
+        """
+        score_dict = {}
 
-    def get_neighbors(self, node, G, t=1000, k=5):
-        return [10, 11, 12]
+        df_filtered = G[(G['t'] < t) & (G['u'] == u)]
+
+        for _, row in df_filtered.iterrows():
+            v = row['v']
+            ts = row['t']
+            score = 1 / (1 + np.exp(-(t - ts)))  # sigmoid weight
+            score_dict[v] = score_dict.get(v, 0.0) + score
+
+        # Sort and get top-k
+        sorted_neighbors = sorted(score_dict.items(), key=lambda x: x[1], reverse=True)
+        topk_neighbors = [v for v, _ in sorted_neighbors[:k]]
+        return topk_neighbors
+
 
     def get_embedding(self, u: int, timestamp: float, lambda_decay: float = 1.0, neighbors: list = None):
         hu_list = []

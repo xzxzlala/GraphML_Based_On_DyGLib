@@ -10,11 +10,23 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import StratifiedKFold
 import numpy as np
 
+df = pd.read_csv('DG_data/mooc/ml_mooc.csv')
+df_cleaned = df.rename(columns={
+    'u': 'u',
+    'i': 'v',
+    'ts': 't',
+    'label': 'linked'
+})[['u', 'v', 't', 'linked']]
+
+output_path = 'universal_embedding/mooc_cleaned.csv'
+df_cleaned.to_csv(output_path, index=False)
+
+print(f"Cleaned MOOC data saved to {output_path}")
 
 def get_data(data_path, fold_index=0, batch_size=10):
     # Load data
     if data_path is not None and len(data_path) > 3:
-        data = pd.read_excel(data_path)
+        data = pd.read_csv(data_path)
     else:
         # Sample data (replace with your actual data)
         data = {
@@ -174,7 +186,7 @@ if __name__ == '__main__':
     EPOCHS = 10
     EMBEDDING_DIM = 128
     BATCH_SIZE = 8
-    DATA_PATH = ""
+    DATA_PATH = "universal_embedding/mooc_cleaned.csv"
     device = torch.device("cuda")
 
     # prepare
