@@ -14,11 +14,13 @@ class UniversalLinkPredModel(nn.Module):
         x = torch.sigmoid(self.fc2(x))
         return x
 
-D = 10
-model = UniversalLinkPredModel(D)
+if __name__ == '__main__':
 
-input1 = torch.randn(1, D)
-input2 = torch.randn(1, D)
+    D = 10
+    model = UniversalLinkPredModel(D)
 
-output = model(input1, input2)
-print(output)
+    input1 = torch.randn(1, D)
+    input2 = torch.randn(1, D)
+
+    output = model(input1, input2)
+    print(output)
