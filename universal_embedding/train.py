@@ -38,28 +38,25 @@ class BalancedBatchSampler(Sampler):
 
     def __iter__(self):
         pos_ptr, neg_ptr = 0, 0
-        while True:
-            # Check if we have enough samples left
-            if (pos_ptr + self.n_pos_per_batch > len(self.pos_indices) or
-                    neg_ptr + self.n_neg_per_batch > len(self.neg_indices)):
-                break
+        for _ in range(len(self)):
+            if pos_ptr + self.n_pos_per_batch > len(self.pos_indices):
+                np.random.shuffle(self.pos_indices)
+                pos_ptr = 0
+            if neg_ptr + self.n_neg_per_batch > len(self.neg_indices):
+                np.random.shuffle(self.neg_indices)
+                neg_ptr = 0
 
-            # Get balanced batch indices
             batch_indices = (
                     list(self.pos_indices[pos_ptr: pos_ptr + self.n_pos_per_batch]) +
                     list(self.neg_indices[neg_ptr: neg_ptr + self.n_neg_per_batch])
             )
-            np.random.shuffle(batch_indices)  # Shuffle within batch
+            np.random.shuffle(batch_indices)
             yield batch_indices
-
             pos_ptr += self.n_pos_per_batch
             neg_ptr += self.n_neg_per_batch
 
     def __len__(self):
-        return min(
-            len(self.pos_indices) // self.n_pos_per_batch,
-            len(self.neg_indices) // self.n_neg_per_batch
-        )
+        return len(self.labels) // self.batch_size
 
 
 class MLPClassifierForMooc(torch.nn.Module):
@@ -81,7 +78,6 @@ def get_data(data_path, fold_index=0, batch_size=10, device=None):
     dataset_name = 'mooc'
     model_name = 'DyGFormer'
     seed = 0
-    device = 'cpu'
 
     node_raw_features, edge_raw_features, full_data, _, _, _ = get_node_classification_data(
         dataset_name=dataset_name, val_ratio=0.15, test_ratio=0.15
@@ -157,6 +153,7 @@ def get_data(data_path, fold_index=0, batch_size=10, device=None):
         num_workers=0,
         sampler=train_sampler  # Apply sampler only to training data
     )
+    print(len(train_loader))
 
     val_loader = DataLoader(
         val_dataset,
@@ -226,14 +223,14 @@ def train_epochs(EPOCHS, train_loader, val_loader, model, optimizer, loss_functi
     best_val_loss = float('inf')
     model = model.to(device)
 
-    for epoch in tqdm(range(EPOCHS)):
+    for epoch in range(EPOCHS):
         # Training phase
         model.train()
         train_loss = 0.0
         train_acc = 0.0
         train_auc = 0.0
 
-        for batch_idx, batch in enumerate(train_loader):
+        for batch_idx, batch in tqdm(enumerate(train_loader), total=len(train_loader)):
             u_emb = torch.stack([item[0][0] for item in batch]).to(device)  # shape [128, emb_dim]
             v_emb = torch.stack([item[1][0] for item in batch]).to(device)  # shape [128, emb_dim]
             labels = torch.tensor([item[3] for item in batch]).to(device)  # shape [128]
@@ -253,6 +250,11 @@ def train_epochs(EPOCHS, train_loader, val_loader, model, optimizer, loss_functi
             optimizer.step()
 
             train_loss += loss.item()
+
+            print("train loss:", train_loss/(batch_idx+1))
+            print("train acc:", train_acc / (batch_idx + 1))
+            print("train auc:", train_auc / (batch_idx + 1))
+
 
         # Validation phase
         val_loss, val_acc, val_auc = evaluate(model, val_loader, loss_function, device)
@@ -284,7 +286,7 @@ if __name__ == '__main__':
     LEARNING_RATE = 1e-4
     EPOCHS = 10
     EMBEDDING_DIM = 172
-    BATCH_SIZE = 128
+    BATCH_SIZE = 256
     DATA_PATH = "./mooc_cleaned.csv"
     device = torch.device("cuda")
 

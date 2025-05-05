@@ -21,8 +21,10 @@ class GraphDataset(Dataset):
         :param link_table: dataframe. index, u_id, v_id, t, linked  [10, 11, 2000, 1]
         :param model:
         """
+        self.device=torch.device("cuda")
         self.link_table = link_table
         self.model = model
+        self.model.to(self.device)
         self.model.eval()
         self.saved_embeddings = {}
 
@@ -67,7 +69,7 @@ class GraphDataset(Dataset):
                 hu_list.append(hu.squeeze(0))
         hu_tensor = torch.stack(hu_list, dim=0)  # [k, d]
         positions = torch.arange(len(neighbors)).float()
-        weights = torch.softmax(-lambda_decay * positions, dim=0)  # shape: [k]
+        weights = torch.softmax(-lambda_decay * positions, dim=0).to(self.device)  # shape: [k]
         hu_avg = torch.sum(weights.unsqueeze(1) * hu_tensor, dim=0)  # shape: [d]
         return hu_avg
 
@@ -130,7 +132,6 @@ if __name__ == '__main__':
     dataset_name = 'mooc'
     model_name = 'DyGFormer'
     seed = 0
-    device = 'cpu'
     fold_index = 0
 
     node_raw_features, edge_raw_features, full_data, _, _, _ = get_node_classification_data(
@@ -188,7 +189,22 @@ if __name__ == '__main__':
     train_dataset = GraphDataset(train_data, model=dygformer)
     val_dataset = GraphDataset(val_data, model=dygformer)
 
-    u, v, t, label = train_dataset[0]
-    print(u, v, t, label)
-    u, v, t, label = val_dataset[0]
-    print(u, v, t, label)
+    b=train_dataset[0]
+    # Dataloder
+    batch_size = 32
+    num_workers = 4
+
+    # 创建 DataLoader
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,  # 验证集通常不需要打乱顺序
+        num_workers=num_workers,
+    )
